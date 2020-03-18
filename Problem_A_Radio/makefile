@@ -1,5 +1,5 @@
 all: radio.cpp
-	g++ -Wall radio.cpp
+	clang++ -Wall radio.cpp
 	
 debug: radio.cpp
-	g++ -Wall radio.cpp -DDEBUG
+	clang++ -Wall radio.cpp -DDEBUG
