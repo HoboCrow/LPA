@@ -164,7 +164,6 @@ int sol_count = 0;
 int best_cost = numeric_limits<int>::max();
 void mark_listener(int lis_i, int cost, int marked) {
     Listener *person = &listeners[lis_i];
-
 #ifdef DEBUG
     printf("Selected listener: ");
     person->print();
@@ -174,21 +173,30 @@ void mark_listener(int lis_i, int cost, int marked) {
         return;
     }
 
-    //     int estimated = (n_listeners - marked) * min_cost + cost;
-    // #ifdef DEBUG
-    //     printf("Estimated worst case solution: %d vs %d\n", estimated,
-    //     best_cost); if (estimated >= best_cost) printf("Not worth!\n");
-    // #endif
-    //     if (estimated >= best_cost) return;
+    int estimated = (n_listeners - marked) * min_cost + cost;
+#ifdef DEBUG
+    printf("Estimated worst case solution: %d vs %d\n", estimated, best_cost);
+    if (estimated >= best_cost)
+        printf("Not worth!\n");
+#endif
+    if (estimated >= best_cost)
+        return;
 
     for (auto &combo : person->reached_from) {
         Place *place = combo.first;
-
+#ifdef DEBUG
+        printf("\tCombo place: ");
+        place->print();
+#endif
         if (place->occupied)
             continue; // occupied with a type that does not reach this person
 
         vector<Antena *> types = combo.second;
         for (auto type : types) {
+#ifdef DEBUG
+            printf("\t\tPossible type:");
+            type->print();
+#endif
             if (cost + type->cost >= best_cost)
                 continue;                      // this antena is not worth it
             place->occupied = type->index + 1; // Could be moved up if bool
@@ -198,6 +206,10 @@ void mark_listener(int lis_i, int cost, int marked) {
 #endif
             // mark all the people
             for (auto &p : place->people_in_reach[type]) {
+#ifdef DEBUG
+                printf("\t\t\tMarking person ");
+                p->print();
+#endif
                 if (p->marked++ == 0) {
                     marked++;
                     if (marked == n_listeners) {
@@ -288,10 +300,12 @@ int main(int argc, char const *argv[]) {
     printf("People before: \n");
     print_people();
 #endif
-    sort_listeners_by_least_choise();
+    // sort_listeners_by_least_choise();
 #ifdef DEBUG
     printf("People after: \n");
     print_people();
+    printf("Places:\n");
+    print_places();
 #endif
     mark_listener(0, 0, 0);
 

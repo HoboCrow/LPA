@@ -92,9 +92,6 @@ void impossible() {
     exit(1);
 }
 
-
-}
-#endif
 void get_input() {
     // Listeners
     scanf("%d", &n_listeners);
@@ -147,24 +144,20 @@ void set_reaches() {
     }
 }
 
-
-
 int best_cost = numeric_limits<int>::max();
 void mark_listener(int lis_i, int cost, int marked) {
     Listener *person = &listeners[lis_i];
-
     if (person->marked && lis_i + 1 < n_listeners) {
         mark_listener(lis_i + 1, cost, marked);
         return;
     }
 
-    //     int estimated = (n_listeners - marked) * min_cost + cost;
-    // 
-    //     if (estimated >= best_cost) return;
+    int estimated = (n_listeners - marked) * min_cost + cost;
+    if (estimated >= best_cost)
+        return;
 
     for (auto &combo : person->reached_from) {
         Place *place = combo.first;
-
         if (place->occupied)
             continue; // occupied with a type that does not reach this person
 
@@ -173,7 +166,6 @@ void mark_listener(int lis_i, int cost, int marked) {
             if (cost + type->cost >= best_cost)
                 continue;                      // this antena is not worth it
             place->occupied = type->index + 1; // Could be moved up if bool
-
 
             // mark all the people
             for (auto &p : place->people_in_reach[type]) {
@@ -184,7 +176,6 @@ void mark_listener(int lis_i, int cost, int marked) {
                         if (cost + type->cost < best_cost) {
                             // Best solution so far
                             best_cost = cost + type->cost;
-
                             break;
                         }
                     }
@@ -205,8 +196,6 @@ void mark_listener(int lis_i, int cost, int marked) {
     }
 }
 
-
-
 bool listener_compare(const Listener &p1, const Listener &p2) {
     int sum1 = 0, sum2 = 0;
     for (auto &options : p1.reached_from)
@@ -226,9 +215,7 @@ int main(int argc, char const *argv[]) {
     if (places.size() == 0 || antenas.size() == 0 || listeners.size() == 0)
         impossible();
     set_reaches();
-
-    sort_listeners_by_least_choise();
-
+    // sort_listeners_by_least_choise();
     mark_listener(0, 0, 0);
 
     if (best_cost != numeric_limits<int>::max()) {
@@ -236,7 +223,6 @@ int main(int argc, char const *argv[]) {
     } else {
         printf("no solution\n");
     }
-
 
     return 0;
 }

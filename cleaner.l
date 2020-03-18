@@ -1,8 +1,11 @@
-
+%{
+    int c = 0;
+%}
 %X IN
 %%
-"#ifdef DEBUG" BEGIN(IN);
-<IN>"#endif"   BEGIN(0);
+"#ifdef DEBUG" BEGIN(IN); c++;
+<IN>"ifdef"|"ifndef" c++;
+<IN>"#endif"\n?   if (--c == 0) BEGIN(0);
 <IN>.|\n       ;
 %%
 int main(int argc, const char** argv)
