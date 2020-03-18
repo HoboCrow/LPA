@@ -92,16 +92,7 @@ void impossible() {
     exit(1);
 }
 
-#ifdef DEBUG
-void output_solution(int id) {
-#ifndef GDB
-    char buff[24];
-    snprintf(buff, 24, "./prog_out/out%03d.txt", id);
-    FILE *f = fopen(buff, "w");
-    for (auto &plc : places)
-        fprintf(f, "%d ", plc.occupied);
-    fclose(f);
-#endif
+
 }
 #endif
 void get_input() {
@@ -156,29 +147,19 @@ void set_reaches() {
     }
 }
 
-#ifdef DEBUG
-int c = 0; // inner loop count. rough performance estimate
-int sol_count = 0;
-#endif
+
 
 int best_cost = numeric_limits<int>::max();
 void mark_listener(int lis_i, int cost, int marked) {
     Listener *person = &listeners[lis_i];
 
-#ifdef DEBUG
-    printf("Selected listener: ");
-    person->print();
-#endif
     if (person->marked && lis_i + 1 < n_listeners) {
         mark_listener(lis_i + 1, cost, marked);
         return;
     }
 
     //     int estimated = (n_listeners - marked) * min_cost + cost;
-    // #ifdef DEBUG
-    //     printf("Estimated worst case solution: %d vs %d\n", estimated,
-    //     best_cost); if (estimated >= best_cost) printf("Not worth!\n");
-    // #endif
+    // 
     //     if (estimated >= best_cost) return;
 
     for (auto &combo : person->reached_from) {
@@ -193,9 +174,7 @@ void mark_listener(int lis_i, int cost, int marked) {
                 continue;                      // this antena is not worth it
             place->occupied = type->index + 1; // Could be moved up if bool
 
-#ifdef DEBUG
-            c++;
-#endif
+
             // mark all the people
             for (auto &p : place->people_in_reach[type]) {
                 if (p->marked++ == 0) {
@@ -205,13 +184,7 @@ void mark_listener(int lis_i, int cost, int marked) {
                         if (cost + type->cost < best_cost) {
                             // Best solution so far
                             best_cost = cost + type->cost;
-#ifdef DEBUG
-                            printf("Solution: [");
-                            for (auto &plc : places)
-                                printf("%d ", plc.occupied);
-                            printf("]\n");
-                            output_solution(sol_count++);
-#endif
+
                             break;
                         }
                     }
@@ -232,37 +205,7 @@ void mark_listener(int lis_i, int cost, int marked) {
     }
 }
 
-#ifdef DEBUG
-void print_people() {
-    for (auto &person : listeners) {
-        printf("Person (%d,%d):\n", person.x, person.y);
-        for (auto &entry : person.reached_from) {
-            Place *place = entry.first;
-            vector<Antena *> antenas = entry.second;
-            printf("|- Place (%d,%d):\n", place->x, place->y);
-            for (auto type : antenas) {
-                printf("||- Antena: cost: %d radius %d\n", type->cost,
-                       type->radius);
-            }
-        }
-    }
-}
-void print_places() {
-    for (auto &place : places) {
-        printf("Place (%d,%d):\n", place.x, place.y);
-        for (auto &entry : place.people_in_reach) {
-            Antena *antena = entry.first;
-            vector<Listener *> listeners = entry.second;
-            printf("|- Antena cost : %d radius: %d):\n", antena->cost,
-                   antena->radius);
-            for (auto listener : listeners) {
-                printf("||- Listener (%d,%d)\n", listener->x, listener->y);
-            }
-        }
-    }
-}
 
-#endif
 
 bool listener_compare(const Listener &p1, const Listener &p2) {
     int sum1 = 0, sum2 = 0;
@@ -283,16 +226,9 @@ int main(int argc, char const *argv[]) {
     if (places.size() == 0 || antenas.size() == 0 || listeners.size() == 0)
         impossible();
     set_reaches();
-#ifdef DEBUG
-    // printf("Min cost: %d\n", min_cost);
-    printf("People before: \n");
-    print_people();
-#endif
+
     sort_listeners_by_least_choise();
-#ifdef DEBUG
-    printf("People after: \n");
-    print_people();
-#endif
+
     mark_listener(0, 0, 0);
 
     if (best_cost != numeric_limits<int>::max()) {
@@ -301,8 +237,6 @@ int main(int argc, char const *argv[]) {
         printf("no solution\n");
     }
 
-#ifdef DEBUG
-    printf("Inner count = %d\n", c);
-#endif
+
     return 0;
 }
