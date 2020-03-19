@@ -42,7 +42,7 @@ class Place {
     int x;
     int y;
     int index;
-    int occupied;
+    int occupied = 0;
     unordered_map<Antena *, vector<Listener *>> people_in_reach;
     Place(int x, int y, int i) {
         this->x = x;
@@ -101,7 +101,7 @@ void output_solution(int id) {
     char buff[24];
     snprintf(buff, 24, "./prog_out/out%03d.txt", id);
     FILE *f = fopen(buff, "w");
-    for (auto &plc : places) fprintf(f, "%d ", plc.occupied);
+    for (auto &plc : places) fprintf(f, "%d ", plc->occupied);
     fclose(f);
 #endif
 }
@@ -169,19 +169,22 @@ void mark_listener(int lis_i, int cost, int marked) {
     printf("Selected listener: ");
     person->print();
 #endif
+    // Check if this person is already marked, if yes go to the next one
     if (person->marked && lis_i + 1 < n_listeners) {
         mark_listener(lis_i + 1, cost, marked);
         return;
     }
-
-    int estimated = (n_listeners - marked) * min_cost + cost;
+    // Estimate worst case scenario. If a better solution was already found,
+    // return
+    // int estimated = (n_listeners - marked) * min_cost + cost;
 #ifdef DEBUG
     printf("Estimated worst case solution: %d vs %d\n", estimated, best_cost);
     if (estimated >= best_cost) printf("Not worth!\n");
 #endif
-    if (estimated >= best_cost) return;
+    // if (estimated >= best_cost) return;
 
     for (auto combo : person->reached_from) {
+        // combo = [Place,list of AntenaTypes] that can reach this person
         Place *place = combo.first;
 #ifdef DEBUG
         printf("\tCombo place: ");
@@ -193,24 +196,25 @@ void mark_listener(int lis_i, int cost, int marked) {
         vector<Antena *> types = combo.second;
         for (auto type : types) {
 #ifdef DEBUG
-            printf("\t\tPossible type:");
+            printf("\t\tPossible type: %ld people here",
+                   place->people_in_reach[type].size());
             type->print();
 #endif
             if (cost + type->cost >= best_cost)
-                continue;                       // this antena is not worth it
-            place->occupied = type->index + 1;  // Could be moved up if bool
+                continue;  // this antena is not worth it
+            place->occupied = type->index + 1;
 
 #ifdef DEBUG
             c++;
 #endif
-            // mark all the people
+            // mark all the people reached from this place and antena
             for (auto p : place->people_in_reach[type]) {
 #ifdef DEBUG
                 printf("\t\t\tMarking person ");
                 p->print();
 #endif
                 if (p->marked++ == 0) {
-                    marked++;
+                    marked++;  // total number of people marked
                     if (marked == n_listeners) {
                         // This is a solution
                         if (cost + type->cost < best_cost) {
@@ -218,12 +222,14 @@ void mark_listener(int lis_i, int cost, int marked) {
                             best_cost = cost + type->cost;
 #ifdef DEBUG
                             printf("Solution: [");
-                            for (auto &plc : places)
-                                printf("%d ", plc.occupied);
+                            for (auto plc : places)
+                                printf("%d ", plc->occupied);
                             printf("]\n");
                             output_solution(sol_count++);
 #endif
-                            break;  // TODO UNMARK
+                            // break;  // Cannot break here -> unmariking has no
+                            // way to know, TODO consider temp variable to count
+                            // marked people in this loop
                         }
                     }
                 }
@@ -244,9 +250,9 @@ void mark_listener(int lis_i, int cost, int marked) {
 
 #ifdef DEBUG
 void print_people() {
-    for (auto &person : listeners) {
-        printf("Person (%d,%d):\n", person.x, person.y);
-        for (auto &entry : person.reached_from) {
+    for (auto person : listeners) {
+        printf("Person (%d,%d):\n", person->x, person->y);
+        for (auto &entry : person->reached_from) {
             Place *place = entry.first;
             vector<Antena *> antenas = entry.second;
             printf("|- Place (%d,%d):\n", place->x, place->y);
@@ -259,8 +265,8 @@ void print_people() {
 }
 void print_places() {
     for (auto &place : places) {
-        printf("Place (%d,%d):\n", place.x, place.y);
-        for (auto &entry : place.people_in_reach) {
+        printf("Place (%d,%d):\n", place->x, place->y);
+        for (auto &entry : place->people_in_reach) {
             Antena *antena = entry.first;
             vector<Listener *> listeners = entry.second;
             printf("|- Antena cost : %d radius: %d):\n", antena->cost,
@@ -296,7 +302,7 @@ int main(int argc, char const *argv[]) {
     printf("People before: \n");
     print_people();
 #endif
-    // sort_listeners_by_least_choise();
+    sort_listeners_by_least_choise();
 #ifdef DEBUG
     printf("People after: \n");
     print_people();
@@ -310,6 +316,11 @@ int main(int argc, char const *argv[]) {
     } else {
         printf("no solution\n");
     }
+
+    // Cleanup
+    for (auto p : listeners) delete p;
+    for (auto a : antenas) delete a;
+    for (auto p : places) delete p;
 
 #ifdef DEBUG
     printf("Inner count = %d\n", c);

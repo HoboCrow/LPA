@@ -42,7 +42,7 @@ class Place {
     int x;
     int y;
     int index;
-    int occupied;
+    int occupied = 0;
     unordered_map<Antena *, vector<Listener *>> people_in_reach;
     Place(int x, int y, int i) {
         this->x = x;
@@ -150,15 +150,18 @@ void set_reaches() {
 int best_cost = numeric_limits<int>::max();
 void mark_listener(int lis_i, int cost, int marked) {
     Listener *person = listeners[lis_i];
+    // Check if this person is already marked, if yes go to the next one
     if (person->marked && lis_i + 1 < n_listeners) {
         mark_listener(lis_i + 1, cost, marked);
         return;
     }
-
-    int estimated = (n_listeners - marked) * min_cost + cost;
-    if (estimated >= best_cost) return;
+    // Estimate worst case scenario. If a better solution was already found,
+    // return
+    // int estimated = (n_listeners - marked) * min_cost + cost;
+    // if (estimated >= best_cost) return;
 
     for (auto combo : person->reached_from) {
+        // combo = [Place,list of AntenaTypes] that can reach this person
         Place *place = combo.first;
         if (place->occupied)
             continue;  // occupied with a type that does not reach this person
@@ -166,19 +169,21 @@ void mark_listener(int lis_i, int cost, int marked) {
         vector<Antena *> types = combo.second;
         for (auto type : types) {
             if (cost + type->cost >= best_cost)
-                continue;                       // this antena is not worth it
-            place->occupied = type->index + 1;  // Could be moved up if bool
+                continue;  // this antena is not worth it
+            place->occupied = type->index + 1;
 
-            // mark all the people
+            // mark all the people reached from this place and antena
             for (auto p : place->people_in_reach[type]) {
                 if (p->marked++ == 0) {
-                    marked++;
+                    marked++;  // total number of people marked
                     if (marked == n_listeners) {
                         // This is a solution
                         if (cost + type->cost < best_cost) {
                             // Best solution so far
                             best_cost = cost + type->cost;
-                            break;  // TODO UNMARK
+                            // break;  // Cannot break here -> unmariking has no
+                            // way to know, TODO consider temp variable to count
+                            // marked people in this loop
                         }
                     }
                 }
@@ -215,7 +220,7 @@ int main(int argc, char const *argv[]) {
     if (places.size() == 0 || antenas.size() == 0 || listeners.size() == 0)
         impossible();
     set_reaches();
-    // sort_listeners_by_least_choise();
+    sort_listeners_by_least_choise();
     mark_listener(0, 0, 0);
 
     if (best_cost != numeric_limits<int>::max()) {
@@ -223,6 +228,11 @@ int main(int argc, char const *argv[]) {
     } else {
         printf("no solution\n");
     }
+
+    // Cleanup
+    for (auto p : listeners) delete p;
+    for (auto a : antenas) delete a;
+    for (auto p : places) delete p;
 
     return 0;
 }
