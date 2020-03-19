@@ -1,6 +1,7 @@
 #include <bits/stdc++.h>
-#include <limits>
 #include <stdio.h>
+
+#include <limits>
 
 using namespace std;
 
@@ -9,7 +10,7 @@ class Antena;
 class Listener;
 
 class Antena {
-  public:
+   public:
     int cost;
     int radius;
     int index;
@@ -28,15 +29,16 @@ class Antena {
 };
 
 namespace std {
-template <> struct hash<Antena> {
+template <>
+struct hash<Antena> {
     std::size_t operator()(const Antena &a) const {
         return std::hash<int>{}(a.index);
     }
 };
-} // namespace std
+}  // namespace std
 
 class Place {
-  public:
+   public:
     int x;
     int y;
     int index;
@@ -53,15 +55,16 @@ class Place {
     }
 };
 namespace std {
-template <> struct hash<Place> {
+template <>
+struct hash<Place> {
     std::size_t operator()(const Place &p) const {
         return std::hash<int>{}(p.index);
     }
 };
-} // namespace std
+}  // namespace std
 
 class Listener {
-  public:
+   public:
     int index;
     int x;
     int y;
@@ -83,9 +86,9 @@ int n_antenas;
 int max_range = -1;
 int min_cost = numeric_limits<int>::max();
 
-vector<Listener> listeners;
-vector<Place> places;
-vector<Antena> antenas;
+vector<Listener *> listeners;
+vector<Place *> places;
+vector<Antena *> antenas;
 
 void impossible() {
     printf("no solution\n");
@@ -99,7 +102,7 @@ void get_input() {
     int x, y;
     for (int i = 0; i < n_listeners; i++) {
         scanf("%d %d", &x, &y);
-        listeners.push_back(Listener(x, y, i));
+        listeners.push_back(new Listener(x, y, i));
     }
 
     // Places
@@ -107,7 +110,7 @@ void get_input() {
     places.reserve(n_places);
     for (int i = 0; i < n_places; i++) {
         scanf("%d %d", &x, &y);
-        places.push_back(Place(x, y, i));
+        places.push_back(new Place(x, y, i));
     }
     // Antenas
     scanf("%d", &n_antenas);
@@ -115,11 +118,9 @@ void get_input() {
     int r, c;
     for (int i = 0; i < n_antenas; i++) {
         scanf("%d %d", &r, &c);
-        antenas.push_back(Antena(r, c, i));
-        if (r > max_range)
-            max_range = r;
-        if (c < min_cost)
-            min_cost = c;
+        antenas.push_back(new Antena(r, c, i));
+        if (r > max_range) max_range = r;
+        if (c < min_cost) min_cost = c;
     }
 }
 
@@ -130,13 +131,14 @@ inline bool inRange(Place &plc, Listener &lis, int range) {
 }
 
 void set_reaches() {
-    for (auto &person : listeners) {
-        for (auto &place : places) {
-            if (inRange(place, person, max_range)) {
-                for (auto &type : antenas) {
-                    if (inRange(place, person, type.radius)) {
-                        person.reached_from[&place].push_back(&type);
-                        place.people_in_reach[&type].push_back(&person);
+    // person and place are pointers
+    for (auto person : listeners) {
+        for (auto place : places) {
+            if (inRange(*place, *person, max_range)) {
+                for (auto type : antenas) {
+                    if (inRange(*place, *person, type->radius)) {
+                        person->reached_from[place].push_back(type);
+                        place->people_in_reach[type].push_back(person);
                     }
                 }
             }
@@ -144,31 +146,31 @@ void set_reaches() {
     }
 }
 
+
 int best_cost = numeric_limits<int>::max();
 void mark_listener(int lis_i, int cost, int marked) {
-    Listener *person = &listeners[lis_i];
+    Listener *person = listeners[lis_i];
     if (person->marked && lis_i + 1 < n_listeners) {
         mark_listener(lis_i + 1, cost, marked);
         return;
     }
 
     int estimated = (n_listeners - marked) * min_cost + cost;
-    if (estimated >= best_cost)
-        return;
+    if (estimated >= best_cost) return;
 
-    for (auto &combo : person->reached_from) {
+    for (auto combo : person->reached_from) {
         Place *place = combo.first;
         if (place->occupied)
-            continue; // occupied with a type that does not reach this person
+            continue;  // occupied with a type that does not reach this person
 
         vector<Antena *> types = combo.second;
         for (auto type : types) {
             if (cost + type->cost >= best_cost)
-                continue;                      // this antena is not worth it
-            place->occupied = type->index + 1; // Could be moved up if bool
+                continue;                       // this antena is not worth it
+            place->occupied = type->index + 1;  // Could be moved up if bool
 
             // mark all the people
-            for (auto &p : place->people_in_reach[type]) {
+            for (auto p : place->people_in_reach[type]) {
                 if (p->marked++ == 0) {
                     marked++;
                     if (marked == n_listeners) {
@@ -176,7 +178,7 @@ void mark_listener(int lis_i, int cost, int marked) {
                         if (cost + type->cost < best_cost) {
                             // Best solution so far
                             best_cost = cost + type->cost;
-                            break;
+                            break;  // TODO UNMARK
                         }
                     }
                 }
@@ -187,21 +189,19 @@ void mark_listener(int lis_i, int cost, int marked) {
             // TODO consider using local variable for counting marked
 
             // Unmark all marked people in this iteration
-            for (auto &p : place->people_in_reach[type]) {
-                if (--(p->marked) == 0)
-                    marked--;
+            for (auto p : place->people_in_reach[type]) {
+                if (--(p->marked) == 0) marked--;
             }
             place->occupied = 0;
         }
     }
 }
 
-bool listener_compare(const Listener &p1, const Listener &p2) {
+
+bool listener_compare(const Listener *p1, const Listener *p2) {
     int sum1 = 0, sum2 = 0;
-    for (auto &options : p1.reached_from)
-        sum1 += options.second.size();
-    for (auto &options : p2.reached_from)
-        sum2 += options.second.size();
+    for (auto &options : p1->reached_from) sum1 += options.second.size();
+    for (auto &options : p2->reached_from) sum2 += options.second.size();
     return sum1 < sum2;
 }
 
