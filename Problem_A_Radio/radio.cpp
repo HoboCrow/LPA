@@ -1,6 +1,7 @@
 #include <bits/stdc++.h>
-#include <limits>
 #include <stdio.h>
+
+#include <limits>
 
 using namespace std;
 
@@ -9,7 +10,7 @@ class Antena;
 class Listener;
 
 class Antena {
-  public:
+   public:
     int cost;
     int radius;
     int index;
@@ -28,19 +29,20 @@ class Antena {
 };
 
 namespace std {
-template <> struct hash<Antena> {
+template <>
+struct hash<Antena> {
     std::size_t operator()(const Antena &a) const {
         return std::hash<int>{}(a.index);
     }
 };
-} // namespace std
+}  // namespace std
 
 class Place {
-  public:
+   public:
     int x;
     int y;
     int index;
-    int occupied;
+    int occupied = 0;
     unordered_map<Antena *, vector<Listener *>> people_in_reach;
     Place(int x, int y, int i) {
         this->x = x;
@@ -53,15 +55,16 @@ class Place {
     }
 };
 namespace std {
-template <> struct hash<Place> {
+template <>
+struct hash<Place> {
     std::size_t operator()(const Place &p) const {
         return std::hash<int>{}(p.index);
     }
 };
-} // namespace std
+}  // namespace std
 
 class Listener {
-  public:
+   public:
     int index;
     int x;
     int y;
@@ -83,9 +86,9 @@ int n_antenas;
 int max_range = -1;
 int min_cost = numeric_limits<int>::max();
 
-vector<Listener> listeners;
-vector<Place> places;
-vector<Antena> antenas;
+vector<Listener *> listeners;
+vector<Place *> places;
+vector<Antena *> antenas;
 
 void impossible() {
     printf("no solution\n");
@@ -98,8 +101,7 @@ void output_solution(int id) {
     char buff[24];
     snprintf(buff, 24, "./prog_out/out%03d.txt", id);
     FILE *f = fopen(buff, "w");
-    for (auto &plc : places)
-        fprintf(f, "%d ", plc.occupied);
+    for (auto &plc : places) fprintf(f, "%d ", plc->occupied);
     fclose(f);
 #endif
 }
@@ -111,7 +113,7 @@ void get_input() {
     int x, y;
     for (int i = 0; i < n_listeners; i++) {
         scanf("%d %d", &x, &y);
-        listeners.push_back(Listener(x, y, i));
+        listeners.push_back(new Listener(x, y, i));
     }
 
     // Places
@@ -119,7 +121,7 @@ void get_input() {
     places.reserve(n_places);
     for (int i = 0; i < n_places; i++) {
         scanf("%d %d", &x, &y);
-        places.push_back(Place(x, y, i));
+        places.push_back(new Place(x, y, i));
     }
     // Antenas
     scanf("%d", &n_antenas);
@@ -127,11 +129,9 @@ void get_input() {
     int r, c;
     for (int i = 0; i < n_antenas; i++) {
         scanf("%d %d", &r, &c);
-        antenas.push_back(Antena(r, c, i));
-        if (r > max_range)
-            max_range = r;
-        if (c < min_cost)
-            min_cost = c;
+        antenas.push_back(new Antena(r, c, i));
+        if (r > max_range) max_range = r;
+        if (c < min_cost) min_cost = c;
     }
 }
 
@@ -142,13 +142,14 @@ inline bool inRange(Place &plc, Listener &lis, int range) {
 }
 
 void set_reaches() {
-    for (auto &person : listeners) {
-        for (auto &place : places) {
-            if (inRange(place, person, max_range)) {
-                for (auto &type : antenas) {
-                    if (inRange(place, person, type.radius)) {
-                        person.reached_from[&place].push_back(&type);
-                        place.people_in_reach[&type].push_back(&person);
+    // person and place are pointers
+    for (auto person : listeners) {
+        for (auto place : places) {
+            if (inRange(*place, *person, max_range)) {
+                for (auto type : antenas) {
+                    if (inRange(*place, *person, type->radius)) {
+                        person->reached_from[place].push_back(type);
+                        place->people_in_reach[type].push_back(person);
                     }
                 }
             }
@@ -157,61 +158,63 @@ void set_reaches() {
 }
 
 #ifdef DEBUG
-int c = 0; // inner loop count. rough performance estimate
+int c = 0;  // inner loop count. rough performance estimate
 int sol_count = 0;
 #endif
 
 int best_cost = numeric_limits<int>::max();
 void mark_listener(int lis_i, int cost, int marked) {
-    Listener *person = &listeners[lis_i];
+    Listener *person = listeners[lis_i];
 #ifdef DEBUG
     printf("Selected listener: ");
     person->print();
 #endif
+    // Check if this person is already marked, if yes go to the next one
     if (person->marked && lis_i + 1 < n_listeners) {
         mark_listener(lis_i + 1, cost, marked);
         return;
     }
-
-    int estimated = (n_listeners - marked) * min_cost + cost;
+    // Estimate worst case scenario. If a better solution was already found,
+    // return
+    // int estimated = (n_listeners - marked) * min_cost + cost;
 #ifdef DEBUG
     printf("Estimated worst case solution: %d vs %d\n", estimated, best_cost);
-    if (estimated >= best_cost)
-        printf("Not worth!\n");
+    if (estimated >= best_cost) printf("Not worth!\n");
 #endif
-    if (estimated >= best_cost)
-        return;
+    // if (estimated >= best_cost) return;
 
-    for (auto &combo : person->reached_from) {
+    for (auto combo : person->reached_from) {
+        // combo = [Place,list of AntenaTypes] that can reach this person
         Place *place = combo.first;
 #ifdef DEBUG
         printf("\tCombo place: ");
         place->print();
 #endif
         if (place->occupied)
-            continue; // occupied with a type that does not reach this person
+            continue;  // occupied with a type that does not reach this person
 
         vector<Antena *> types = combo.second;
         for (auto type : types) {
 #ifdef DEBUG
-            printf("\t\tPossible type:");
+            printf("\t\tPossible type: %ld people here",
+                   place->people_in_reach[type].size());
             type->print();
 #endif
             if (cost + type->cost >= best_cost)
-                continue;                      // this antena is not worth it
-            place->occupied = type->index + 1; // Could be moved up if bool
+                continue;  // this antena is not worth it
+            place->occupied = type->index + 1;
 
 #ifdef DEBUG
             c++;
 #endif
-            // mark all the people
-            for (auto &p : place->people_in_reach[type]) {
+            // mark all the people reached from this place and antena
+            for (auto p : place->people_in_reach[type]) {
 #ifdef DEBUG
                 printf("\t\t\tMarking person ");
                 p->print();
 #endif
                 if (p->marked++ == 0) {
-                    marked++;
+                    marked++;  // total number of people marked
                     if (marked == n_listeners) {
                         // This is a solution
                         if (cost + type->cost < best_cost) {
@@ -219,12 +222,14 @@ void mark_listener(int lis_i, int cost, int marked) {
                             best_cost = cost + type->cost;
 #ifdef DEBUG
                             printf("Solution: [");
-                            for (auto &plc : places)
-                                printf("%d ", plc.occupied);
+                            for (auto plc : places)
+                                printf("%d ", plc->occupied);
                             printf("]\n");
                             output_solution(sol_count++);
 #endif
-                            // break; //would make unmarking  more complex
+                            // break;  // Cannot break here -> unmariking has no
+                            // way to know, TODO consider temp variable to count
+                            // marked people in this loop
                         }
                     }
                 }
@@ -235,9 +240,8 @@ void mark_listener(int lis_i, int cost, int marked) {
             // TODO consider using local variable for counting marked
 
             // Unmark all marked people in this iteration
-            for (auto &p : place->people_in_reach[type]) {
-                if (--(p->marked) == 0)
-                    marked--;
+            for (auto p : place->people_in_reach[type]) {
+                if (--(p->marked) == 0) marked--;
             }
             place->occupied = 0;
         }
@@ -246,9 +250,9 @@ void mark_listener(int lis_i, int cost, int marked) {
 
 #ifdef DEBUG
 void print_people() {
-    for (auto &person : listeners) {
-        printf("Person (%d,%d):\n", person.x, person.y);
-        for (auto &entry : person.reached_from) {
+    for (auto person : listeners) {
+        printf("Person (%d,%d):\n", person->x, person->y);
+        for (auto &entry : person->reached_from) {
             Place *place = entry.first;
             vector<Antena *> antenas = entry.second;
             printf("|- Place (%d,%d):\n", place->x, place->y);
@@ -261,8 +265,8 @@ void print_people() {
 }
 void print_places() {
     for (auto &place : places) {
-        printf("Place (%d,%d):\n", place.x, place.y);
-        for (auto &entry : place.people_in_reach) {
+        printf("Place (%d,%d):\n", place->x, place->y);
+        for (auto &entry : place->people_in_reach) {
             Antena *antena = entry.first;
             vector<Listener *> listeners = entry.second;
             printf("|- Antena cost : %d radius: %d):\n", antena->cost,
@@ -276,12 +280,10 @@ void print_places() {
 
 #endif
 
-bool listener_compare(const Listener &p1, const Listener &p2) {
+bool listener_compare(const Listener *p1, const Listener *p2) {
     int sum1 = 0, sum2 = 0;
-    for (auto &options : p1.reached_from)
-        sum1 += options.second.size();
-    for (auto &options : p2.reached_from)
-        sum2 += options.second.size();
+    for (auto &options : p1->reached_from) sum1 += options.second.size();
+    for (auto &options : p2->reached_from) sum2 += options.second.size();
     return sum1 < sum2;
 }
 
@@ -300,7 +302,7 @@ int main(int argc, char const *argv[]) {
     printf("People before: \n");
     print_people();
 #endif
-    // sort_listeners_by_least_choise();
+    sort_listeners_by_least_choise();
 #ifdef DEBUG
     printf("People after: \n");
     print_people();
@@ -314,6 +316,11 @@ int main(int argc, char const *argv[]) {
     } else {
         printf("no solution\n");
     }
+
+    // Cleanup
+    for (auto p : listeners) delete p;
+    for (auto a : antenas) delete a;
+    for (auto p : places) delete p;
 
 #ifdef DEBUG
     printf("Inner count = %d\n", c);
