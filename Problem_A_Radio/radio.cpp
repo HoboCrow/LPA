@@ -224,7 +224,7 @@ void mark_listener(int lis_i, int cost, int marked) {
                             printf("]\n");
                             output_solution(sol_count++);
 #endif
-                            break;
+                            // break; //would make unmarking  more complex
                         }
                     }
                 }

@@ -144,6 +144,7 @@ void set_reaches() {
     }
 }
 
+
 int best_cost = numeric_limits<int>::max();
 void mark_listener(int lis_i, int cost, int marked) {
     Listener *person = &listeners[lis_i];
@@ -176,7 +177,7 @@ void mark_listener(int lis_i, int cost, int marked) {
                         if (cost + type->cost < best_cost) {
                             // Best solution so far
                             best_cost = cost + type->cost;
-                            break;
+                            // break; //would make unmarking  more complex
                         }
                     }
                 }
@@ -195,6 +196,7 @@ void mark_listener(int lis_i, int cost, int marked) {
         }
     }
 }
+
 
 bool listener_compare(const Listener &p1, const Listener &p2) {
     int sum1 = 0, sum2 = 0;

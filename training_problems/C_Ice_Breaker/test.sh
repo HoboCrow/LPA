@@ -1,6 +1,6 @@
 #!/bin/bash
 echo -n "Recompiling..."
-g++ -Wall ice.cpp
+g++ -Wall ice2.cpp
 error=$?
 if [ $error -ne 0 ]
 then
