@@ -10,7 +10,7 @@ class Antena;
 class Listener;
 
 class Antena {
-   public:
+  public:
     int cost;
     int radius;
     int index;
@@ -29,16 +29,15 @@ class Antena {
 };
 
 namespace std {
-template <>
-struct hash<Antena> {
+template <> struct hash<Antena> {
     std::size_t operator()(const Antena &a) const {
         return std::hash<int>{}(a.index);
     }
 };
-}  // namespace std
+} // namespace std
 
 class Place {
-   public:
+  public:
     int x;
     int y;
     int index;
@@ -55,16 +54,15 @@ class Place {
     }
 };
 namespace std {
-template <>
-struct hash<Place> {
+template <> struct hash<Place> {
     std::size_t operator()(const Place &p) const {
         return std::hash<int>{}(p.index);
     }
 };
-}  // namespace std
+} // namespace std
 
 class Listener {
-   public:
+  public:
     int index;
     int x;
     int y;
@@ -101,7 +99,8 @@ void output_solution(int id) {
     char buff[24];
     snprintf(buff, 24, "./prog_out/out%03d.txt", id);
     FILE *f = fopen(buff, "w");
-    for (auto &plc : places) fprintf(f, "%d ", plc->occupied);
+    for (auto &plc : places)
+        fprintf(f, "%d ", plc->occupied);
     fclose(f);
 #endif
 }
@@ -130,8 +129,10 @@ void get_input() {
     for (int i = 0; i < n_antenas; i++) {
         scanf("%d %d", &r, &c);
         antenas.push_back(new Antena(r, c, i));
-        if (r > max_range) max_range = r;
-        if (c < min_cost) min_cost = c;
+        if (r > max_range)
+            max_range = r;
+        if (c < min_cost)
+            min_cost = c;
     }
 }
 
@@ -158,7 +159,7 @@ void set_reaches() {
 }
 
 #ifdef DEBUG
-int c = 0;  // inner loop count. rough performance estimate
+int c = 0; // inner loop count. rough performance estimate
 int sol_count = 0;
 #endif
 
@@ -177,10 +178,10 @@ void mark_listener(int lis_i, int cost, int marked) {
     // Estimate worst case scenario. If a better solution was already found,
     // return
     // int estimated = (n_listeners - marked) * min_cost + cost;
-#ifdef DEBUG
-    printf("Estimated worst case solution: %d vs %d\n", estimated, best_cost);
-    if (estimated >= best_cost) printf("Not worth!\n");
-#endif
+    // #ifdef DEBUG
+    //     printf("Estimated worst case solution: %d vs %d\n", estimated,
+    //     best_cost); if (estimated >= best_cost) printf("Not worth!\n");
+    // #endif
     // if (estimated >= best_cost) return;
 
     for (auto combo : person->reached_from) {
@@ -191,7 +192,7 @@ void mark_listener(int lis_i, int cost, int marked) {
         place->print();
 #endif
         if (place->occupied)
-            continue;  // occupied with a type that does not reach this person
+            continue; // occupied with a type that does not reach this person
 
         vector<Antena *> types = combo.second;
         for (auto type : types) {
@@ -201,7 +202,7 @@ void mark_listener(int lis_i, int cost, int marked) {
             type->print();
 #endif
             if (cost + type->cost >= best_cost)
-                continue;  // this antena is not worth it
+                continue; // this antena is not worth it
             place->occupied = type->index + 1;
 
 #ifdef DEBUG
@@ -214,7 +215,7 @@ void mark_listener(int lis_i, int cost, int marked) {
                 p->print();
 #endif
                 if (p->marked++ == 0) {
-                    marked++;  // total number of people marked
+                    marked++; // total number of people marked
                     if (marked == n_listeners) {
                         // This is a solution
                         if (cost + type->cost < best_cost) {
@@ -241,7 +242,8 @@ void mark_listener(int lis_i, int cost, int marked) {
 
             // Unmark all marked people in this iteration
             for (auto p : place->people_in_reach[type]) {
-                if (--(p->marked) == 0) marked--;
+                if (--(p->marked) == 0)
+                    marked--;
             }
             place->occupied = 0;
         }
@@ -282,8 +284,10 @@ void print_places() {
 
 bool listener_compare(const Listener *p1, const Listener *p2) {
     int sum1 = 0, sum2 = 0;
-    for (auto &options : p1->reached_from) sum1 += options.second.size();
-    for (auto &options : p2->reached_from) sum2 += options.second.size();
+    for (auto &options : p1->reached_from)
+        sum1 += options.second.size();
+    for (auto &options : p2->reached_from)
+        sum2 += options.second.size();
     return sum1 < sum2;
 }
 
@@ -318,9 +322,12 @@ int main(int argc, char const *argv[]) {
     }
 
     // Cleanup
-    for (auto p : listeners) delete p;
-    for (auto a : antenas) delete a;
-    for (auto p : places) delete p;
+    for (auto p : listeners)
+        delete p;
+    for (auto a : antenas)
+        delete a;
+    for (auto p : places)
+        delete p;
 
 #ifdef DEBUG
     printf("Inner count = %d\n", c);

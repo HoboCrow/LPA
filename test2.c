@@ -1,5 +1,9 @@
 #include <stdio.h>
 
-int main(int argc, char const *argv[]) { 
-    printf("%*c\n",5, 'a',5,'b',);
+int t = 0;
+int getAndIncrement() { return t++; }
+
+int main(int argc, char const *argv[]) {
+    printf("Gotten: %d\nAcctual: %d\n", getAndIncrement(), t);
+    return 0;
 }
