@@ -25,10 +25,12 @@ typedef struct edge {
 
 class Graph {
    private:
+    int N;
     vector<vector<pair<int, int>>> adjlist;
     vector<vector<int>> adjmat;
     vector<edge> edges;
-    forward_list<int>::iterator closest(int s, forward_list<int>& q, int d[]) {
+    forward_list<int>::iterator closest(int s, forward_list<int>& q,
+                                        vector<int> d) {
         int min = numeric_limits<int>::max();
         forward_list<int>::iterator min_i;
 
@@ -46,12 +48,18 @@ class Graph {
     vector<int> set_k;
     vector<int> rank_k;
     Graph* kruskal() {
-        Graph* t = new Graph(adjlist.size());
-        set_k.resize(adjlist.size());
-        rank_k.resize(adjlist.size());
+        Graph* t = new Graph(N);
+        set_k.resize(N);
+        rank_k.resize(N);
 
-        for (int v = 0; v < (int)adjlist.size(); ++v) make_set(v);
-
+        for (int v = 0; v < N; ++v) make_set(v);
+        // Regenerate edges.. this is a mess :/
+        edges.clear();
+        for (int i = 0; i < N; i++) {
+            for (auto& n : neighbors(i))
+                if (i < n.first)
+                    edges.push_back({i, n.first, cost(i, n.first)});
+        }
         sort(edges.begin(), edges.end(),
              [](edge& a, edge& b) -> bool { return a.cost < b.cost; });
 
@@ -65,9 +73,8 @@ class Graph {
         }
         return t;
     }
-
     void make_set(int v) {
-        for (int i = 0; i < (int)adjlist.size(); ++i) {
+        for (int i = 0; i < N; ++i) {
             set_k[i] = i;
             rank_k[i] = 0;
         }
@@ -86,35 +93,44 @@ class Graph {
     }
 
    public:
+    Graph() : Graph(0) {}
     Graph(int n) {
         adjlist.resize(n);
         adjmat.resize(n);
+        N = n;
         for (auto& a : adjmat) {
             a.resize(n);
         }
     };
     ~Graph(){};
-
     vector<pair<int, int>> neighbors(int i) { return adjlist[i]; }
     int cost(int a, int b) { return adjmat[a][b]; }
+    void resize(int n) {
+        adjlist.resize(n);
+        adjmat.resize(n);
+        for (auto& a : adjmat) a.resize(n);
+        N = n;
+    }
     void link(int a, int b, int cost) {
+        if (N < max(a, b)) resize(max(a, b));
+
         adjlist[a].push_back(make_pair(b, cost));
         adjlist[b].push_back(make_pair(a, cost));
 
         adjmat[a][b] = cost;
         adjmat[b][a] = cost;
 
-        edges.push_back({a, b, cost});
+        // edges.push_back({a, b, cost});
     }
     vector<int> prev;
-    int dijkstra(int s, int t) {
+    vector<int> dijkstra(int s, int t) {
         // Dijkstra
         forward_list<int> q;
-        prev.resize(adjlist.size());
-        for (int i = 0; i < (int)adjlist.size(); i++) q.push_front(i);
+        prev.resize(N);
+        for (int i = 0; i < N; i++) q.push_front(i);
 
-        int d[adjlist.size()];
-        for (int i = 0; i < (int)adjlist.size(); i++) {
+        vector<int> d(N);
+        for (int i = 0; i < N; i++) {
             d[i] = numeric_limits<int>::max();
             prev[i] = -1;
         }
@@ -126,50 +142,98 @@ class Graph {
             int u = *u_iter;
             q.erase_after(u_prev);
 
-            if (u == t) break;
+            if (t != -1 && u == t) break;
             for (auto v : neighbors(u)) {
-                if (d[v.first] > d[u] + v.second) {
-                    d[v.first] = d[u] + v.second;
+                // if (d[v.first] > d[u] + v.second) {
+                //     d[v.first] = d[u] + v.second;
+                //     prev[v.first] = u;
+                // }
+                if (d[v.first] > d[u] + cost(v.first, u)) {
+                    d[v.first] = d[u] + cost(v.first, u);
                     prev[v.first] = u;
                 }
             }
         }
 
-        return d[t];
+        return d;
     }
 
-    stack<int> shortest_path(int a, int b) {
+    deque<int> shortest_path(int a, int b) {
         dijkstra(a, b);
-        stack<int> path;
+        deque<int> path;
         if (prev[b] != -1 || b == a) {
             while (prev[b] != -1) {
-                path.push(b);
+                path.push_back(b);
                 b = prev[b];
             }
         }
         return path;
     }
 
+    vector<deque<int>> pp_paths;
+    deque<int> pp_path;
+
+    vector<deque<int>> possible_paths(int a, int b, int cost) {
+        pp_paths.clear();
+        pp_path.clear();
+        pp_dfs(a, b, cost);
+        return pp_paths;
+    }
+
+    void pp_dfs(int a, int b, int cost) {
+        if (cost < 0) return;
+
+        if (a == b) {
+            pp_paths.push_back(pp_path);
+            return;
+        }
+
+        for (auto& n : neighbors(a)) {
+            pp_path.push_back(n.first);
+            pp_dfs(n.first, b, cost - this->cost(a, n.first));
+            pp_path.pop_back();
+        }
+    }
+
     vector<int> low;
     vector<int> dfs;
     vector<int> parent;
-    vector<set<int>> aps;
+    set<int> aps;
     vector<bool> marked;
-    vector<set<int>> articulation_points() {
-        low.resize(adjlist.size());
-        dfs.resize(adjlist.size());
-        marked.resize(adjlist.size());
+    vector<int> sub_graph_nodes;
+    vector<Graph*> connected_graphs;
+    void gen_connected_graphs() {
+        low.resize(N);
+        dfs.resize(N);
+        marked.resize(N);
+        parent.resize(N);
         fill(dfs.begin(), dfs.end(), -1);
-        parent.resize(adjlist.size());
-        aps.push_back(aps_rec(0, NULL));
-        for (int i = 0; i < (int)adjlist.size(); i++)
-            if (!marked[i]) aps.push_back(aps_rec(i, NULL));
-        return aps;
+
+        for (int i = 0; i < N; i++) {
+            Graph* subGraph = new Graph();
+            sub_graph_nodes.clear();
+            set<int> aps;
+            if (!marked[i]) {
+                t = 1;
+                aps = aps_rec(i, NULL);
+                subGraph->resize(sub_graph_nodes.size());
+                subGraph->aps = aps;
+
+                for (auto n : sub_graph_nodes) {
+                    for (auto neighbor : neighbors(n)) {
+                        subGraph->link(n, neighbor.first,
+                                       cost(n, neighbor.first));
+                    }
+                }
+                connected_graphs.push_back(subGraph);
+            }
+        }
     }
     int t = 1;
     set<int> aps_rec(int v, set<int>* aps) {
         if (!aps) aps = new set<int>;
         marked[v] = true;
+        sub_graph_nodes.push_back(v);
         low[v] = dfs[v] = t++;
         for (auto wp : neighbors(v)) {
             int w = wp.first;
@@ -187,25 +251,61 @@ class Graph {
         return *aps;
     }
 
+    deque<int> path_most_aps(vector<deque<int>> paths,
+                             vector<set<int>> aps_list) {
+        int max = 0;
+        deque<int> max_path;
+        for (auto& p : paths) {
+            // count aps int path
+            int sum = 0;
+            for (auto& aps : aps_list) {
+                vector<int> common(aps.size());
+                deque<int> path_copy(p);  // TODO move up
+                // sort(aps.begin(), aps.end());
+                sort(path_copy.begin(), path_copy.end());
+                auto end =
+                    set_intersection(path_copy.begin(), path_copy.end(),
+                                     aps.begin(), aps.end(), common.begin());
+                for (auto start = common.begin(); start != end; start++) sum++;
+            }
+            if (sum > max) {
+                max = sum;
+                max_path = p;
+            }
+        }
+        return max_path;
+    }
+
     int total_connect_cost(vector<set<int>> aps_list) {
+        int total_cost = 0;
+        set<pair<int, int>> total;
+        for (auto& aps : aps_list) {
+            for (auto ap1 = aps.begin(); ap1 != aps.end(); ++ap1) {
+                for (auto ap2 = next(ap1); ap2 != aps.end(); ++ap2) {
+                    // TODO pensar em usar matriz para marcar os caminhos?
+                    total_cost += dijkstra(*ap1, *ap2)[*ap2];
+                }
+            }
+        }
+        return total_cost;
+    }
+
+    int total_connect_cost_no_repeat(vector<set<int>> aps_list) {
         int total_cost = 0;
         for (auto& aps : aps_list) {
             set<pair<int, int>> total;
             for (auto ap1 = aps.begin(); ap1 != aps.end(); ++ap1) {
-                for (auto ap2 = next(ap1); ap2 != aps.end(); ap2++) {
-                    stack<int> path = shortest_path(*ap1, *ap2);
+                for (auto ap2 = next(ap1); ap2 != aps.end(); ++ap2) {
+                    deque<int> path = shortest_path(*ap1, *ap2);
                     int ant = *ap1;
-                    // printf("(%d -> %d ) %d ", *ap1, *ap2, ant);
                     while (!path.empty()) {
-                        if (ant > path.top())
-                            total.insert(make_pair(ant, path.top()));
+                        if (ant > path.back())
+                            total.insert(make_pair(ant, path.back()));
                         else
-                            total.insert(make_pair(path.top(), ant));
-                        // printf("%d ", path.top());
-                        ant = path.top();
-                        path.pop();
+                            total.insert(make_pair(path.back(), ant));
+                        ant = path.back();
+                        path.pop_back();
                     }
-                    // printf("\n");
                 }
             }
             for (auto& link : total)
@@ -214,16 +314,46 @@ class Graph {
         return total_cost;
     }
 
+    void update_path_cost(vector<vector<int>>& adjmat, deque<int> path,
+                          int val) {
+        while (path.size() != 1) {
+            int a = path.back();
+            path.pop_back();
+            int b = path.back();
+            adjmat[a][b]--;
+            adjmat[b][a]--;
+        }
+    }
+
     int tree_connect_cost(vector<set<int>> aps_list) {
+        auto original_adjmat = this->adjmat;
+        auto updated_adjmat = adjmat;
+        for (auto& aps : aps_list) {
+            for (auto ap1 = aps.begin(); ap1 != aps.end(); ++ap1) {
+                for (auto ap2 = next(ap1); ap2 != aps.end(); ++ap2) {
+                    printf("%d \n", *ap1);
+                    vector<int> dist = dijkstra(*ap1, -1);
+                    // vector<deque<int>> paths =
+                    //     possible_paths(*ap1, *ap2, dist[*ap2]);
+                    // for (auto& path : paths) {
+                    //     path.push_front(*ap1);
+                    //     update_path_cost(updated_adjmat, path, -1);
+                    // }
+                }
+            }
+        }
+        this->adjmat = updated_adjmat;
         Graph* t = kruskal();
-        return t->total_connect_cost(aps);
+        this->adjmat = original_adjmat;
+        t->adjmat = original_adjmat;
+        return t->total_connect_cost_no_repeat(aps_list);
     }
     void print() {
-        for (int i = 0; i < (int)adjlist.size(); i++) {
+        for (int i = 0; i < N; i++) {
             printf("%d -> ", i + 1);
             for (int j = 0; j < (int)adjlist[i].size(); j++)
                 printf("(%d,%d) ", adjlist[i][j].first + 1,
-                       adjlist[i][j].second);
+                       adjmat[i][adjlist[i][j].first]);
             printf("\n");
         }
     }
@@ -234,10 +364,12 @@ vector<Graph*> get_input() {
     int n;
     int a, b, cost;
     char buffer[100];
-    while (fgets(buffer, 100, stdin)) {
+    buffer[0] = '\0';
+    char* ret = NULL;
+    while ((ret = fgets(buffer, 100, stdin))) {
         sscanf(buffer, "%d", &n);
         Graph* g = new Graph(n);
-        while (fgets(buffer, 100, stdin) &&
+        while ((ret = fgets(buffer, 100, stdin)) &&
                sscanf(buffer, "%d %d %d", &a, &b, &cost) == 3) {
             g->link(a - 1, b - 1, cost);
         }
@@ -249,18 +381,19 @@ vector<Graph*> get_input() {
 int main(int argc, char const* argv[]) {
     vector<Graph*> graphs = get_input();
     for (auto g : graphs) {
-        vector<set<int>> aps = g->articulation_points();
+        g->gen_connected_graphs();
         int sum = 0;
-        for (auto& ap : aps) sum += ap.size();
+        for (auto& cg : g->connected_graphs) sum += cg->aps.size();
+
         if (sum)
             printf("%d ", sum);
         else {
             printf("no server\n");
             continue;
         }
-
-        printf("%d ", g->total_connect_cost(aps));
-        printf("%d", g->tree_connect_cost(aps));
+        // TODO quick 1 0 0 solution
+        printf("%d ", g->total_connect_cost());
+        printf("%d", g->tree_connect_cost());
 
         printf("\n");
     }
