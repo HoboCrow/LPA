@@ -37,21 +37,27 @@ from random import randint
 #     print(0)
 
 # disconnected circle servers
-# def circle_servers(s, n):
-#     for i in range(s, n):
-#         print(f"{i} {i+1} {randint(1,10)}")
-#     print(f"{n} {s} {randint(1,10)}")
-
-#     for i in range(s, n+1):
-#         print(f"{i} {n+i-s+1} 999")
 
 
-# n = 3
-# print(4*n)
-# circle_servers(1, n)
-# circle_servers(2*n+1, 3*n)
+def circle_servers(s, n, f):
+    for i in range(s, n):
+        f.write(f"{i} {i+1} {randint(1,10)}\n")
+        # print(f"{i} {i+1} {randint(1,10)}")
+    # print(f"{n} {s} {randint(1,10)}")
+    f.write(f"{n} {s} {randint(1,10)}\n")
 
-# print(0)
+    for i in range(s, n+1):
+        # print(f"{i} {n+i-s+1} 999")
+        f.write(f"{i} {n+i-s+1} 999\n")
+
+
+n = 22
+with open(f"./inputs/{n}_circle_servers.txt", "w") as f:
+    f.write(f"{2*n}\n")
+    # print(2*n)
+    circle_servers(1, n, f)
+    f.write(f"0\n")
+print(0)
 
 # n = 5
 # print(4*n)
@@ -63,9 +69,9 @@ from random import randint
 
 # random connections
 
-n = 20
-links = 20
-print(n)
-for i in range(1, links):
-    print(f'{randint(1,n)} {randint(1,n)} {randint(1,100)}')
-print(0)
+# n = 20
+# links = 20
+# print(n)
+# for i in range(1, links):
+#     print(f'{randint(1,n)} {randint(1,n)} {randint(1,100)}')
+# print(0)
