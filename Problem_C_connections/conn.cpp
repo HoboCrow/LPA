@@ -167,7 +167,6 @@ class Graph {
         for (auto &d : dists) d.resize(N);
         fill(dfs.begin(), dfs.end(), -1);
         // vector<int> aps = articulation_points_rec(0, NULL);
-        FW();
 
         for (int i = 0; i < N; i++) {
             if (!marked[i]) {
@@ -206,7 +205,8 @@ class Graph {
         return total;
     }
 
-    void FW() {
+    /* Calculate evey pair of distances using the Floyd-Warshall algorithm */
+    void calculate_distances() {
         for (int i = 0; i < N; i++) {
             for (int j = 0; j < N; j++) {
                 int c = cost(i, j);
@@ -278,6 +278,8 @@ int main(int argc, char const *argv[]) {
     vector<Graph *> graphs = get_input();
     for (auto g : graphs) {
         g->gen_connected_graphs();
+        // g->print();
+        // continue;
         int sum = 0;
 
         for (auto &aps : g->groups) sum += aps.servers.size();
@@ -290,6 +292,7 @@ int main(int argc, char const *argv[]) {
             continue;
         }
         printf("%d ", sum);
+        g->calculate_distances();
         printf("%d ", g->total_connect_cost());
         printf("%d", g->tree_connect_cost());
 
