@@ -1,1 +1,3 @@
 # LPA
+
+# Author: Oleksandr Yakovlyev
